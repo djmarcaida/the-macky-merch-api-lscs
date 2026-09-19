@@ -12,7 +12,7 @@ export const errorHandler = (
   // Operational application errors
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
-      status: err.statusCode >= 500 ? 'error' : 'fail',
+      error: true,
       message: err.message,
     });
     return;
@@ -21,7 +21,7 @@ export const errorHandler = (
   // Zod validation errors
   if (err instanceof ZodError) {
     res.status(400).json({
-      status: 'fail',
+      error: true,
       message: 'Validation failed',
       errors: err.errors.map((e) => ({
         field: e.path.join('.'),
@@ -35,14 +35,14 @@ export const errorHandler = (
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2025') {
       res.status(404).json({
-        status: 'fail',
-        message: 'Resource not found',
+        error: true,
+        message: 'Product not found.',
       });
       return;
     }
     if (err.code === 'P2002') {
       res.status(409).json({
-        status: 'fail',
+        error: true,
         message: 'A unique constraint was violated',
       });
       return;
@@ -52,7 +52,7 @@ export const errorHandler = (
   // Fallback for unhandled unexpected errors
   console.error('Unhandled Error:', err);
   res.status(500).json({
-    status: 'error',
+    error: true,
     message:
       process.env.NODE_ENV === 'production'
         ? 'Internal server error'

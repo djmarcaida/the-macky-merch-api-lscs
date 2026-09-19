@@ -4,28 +4,15 @@ import { validate } from '../middlewares/validate';
 import {
   createProductSchema,
   updateProductSchema,
-  productIdParamSchema,
-  productQuerySchema,
 } from '../schemas/product.schema';
 
 const router = Router();
 
-router
-  .route('/')
-  .get(validate({ query: productQuerySchema }), productController.getProducts)
-  .post(validate({ body: createProductSchema }), productController.createProduct);
-
-router
-  .route('/:id')
-  .get(validate({ params: productIdParamSchema }), productController.getProductById)
-  .put(
-    validate({ params: productIdParamSchema, body: updateProductSchema }),
-    productController.updateProduct
-  )
-  .patch(
-    validate({ params: productIdParamSchema, body: updateProductSchema }),
-    productController.updateProduct
-  )
-  .delete(validate({ params: productIdParamSchema }), productController.deleteProduct);
+router.post('/', validate(createProductSchema), productController.createProduct);
+router.get('/', productController.getProducts);
+router.get('/:id', productController.getProductById);
+router.put('/:id', validate(updateProductSchema), productController.updateProduct);
+router.patch('/:id', validate(updateProductSchema), productController.updateProduct);
+router.delete('/:id', productController.deleteProduct);
 
 export default router;

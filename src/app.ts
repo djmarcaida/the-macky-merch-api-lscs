@@ -21,12 +21,12 @@ app.use('/api/products', productRoutes);
 // 404 Catch-all handler for undefined routes
 app.use((req: Request, res: Response) => {
   res.status(404).json({
-    status: 'fail',
+    error: true,
     message: `Cannot ${req.method} ${req.originalUrl}`,
   });
 });
 
-// Centralized Error Handler
+// Centralized Error Handler (registered after all routes)
 app.use(errorHandler);
 
 export default app;
