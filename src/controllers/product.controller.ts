@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../config/db';
+import * as productService from '../services/product.service';
 import { NotFoundError, BadRequestError } from '../errors/AppError';
-import { Prisma } from '@prisma/client';
 
 export const createProduct = async (
   req: Request,
@@ -9,9 +8,7 @@ export const createProduct = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const product = await prisma.product.create({
-      data: req.body,
-    });
+    const product = await productService.createProduct(req.body);
 
     res.status(201).json({
       status: 'success',
@@ -28,56 +25,29 @@ export const getProducts = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { category, isAvailable, search, page, limit } = req.query as any;
+    const result = await productService.getAllProducts(req.query as any);
 
-    const where: Prisma.ProductWhereInput = {};
-
-    if (category) {
-      where.category = {
-        equals: String(category),
-      };
+    if (Array.isArray(result)) {
+      res.status(200).json({
+        status: 'success',
+        results: result.length,
+        data: { products: result },
+      });
+      return;
     }
-
-    if (typeof isAvailable === 'boolean') {
-      where.isAvailable = isAvailable;
-    }
-
-    if (search) {
-      const searchTerm = String(search);
-      where.OR = [
-        { name: { contains: searchTerm } },
-        { description: { contains: searchTerm } },
-      ];
-    }
-
-    const pageNum = Number(page) || 1;
-    const take = Number(limit) || 10;
-    const skip = (pageNum - 1) * take;
-
-    const [total, products] = await Promise.all([
-      prisma.product.count({ where }),
-      prisma.product.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { createdAt: 'desc' },
-      }),
-    ]);
-
-    const totalPages = Math.ceil(total / take) || 1;
 
     res.status(200).json({
       status: 'success',
-      results: products.length,
+      results: result.items.length,
       pagination: {
-        total,
-        page: pageNum,
-        limit: take,
-        totalPages,
-        hasNextPage: pageNum < totalPages,
-        hasPrevPage: pageNum > 1,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+        hasNextPage: result.page < result.totalPages,
+        hasPrevPage: result.page > 1,
       },
-      data: { products },
+      data: { products: result.items },
     });
   } catch (error) {
     next(error);
@@ -91,10 +61,7 @@ export const getProductById = async (
 ): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
-
-    const product = await prisma.product.findUnique({
-      where: { id },
-    });
+    const product = await productService.getProductById(id);
 
     if (!product) {
       throw new NotFoundError(`Product with ID '${id}' not found`);
@@ -121,18 +88,11 @@ export const updateProduct = async (
       throw new BadRequestError('Request body cannot be empty');
     }
 
-    const existing = await prisma.product.findUnique({
-      where: { id },
-    });
+    const product = await productService.updateProduct(id, req.body);
 
-    if (!existing) {
+    if (!product) {
       throw new NotFoundError(`Product with ID '${id}' not found`);
     }
-
-    const product = await prisma.product.update({
-      where: { id },
-      data: req.body,
-    });
 
     res.status(200).json({
       status: 'success',
@@ -150,18 +110,11 @@ export const deleteProduct = async (
 ): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
+    const deleted = await productService.deleteProduct(id);
 
-    const existing = await prisma.product.findUnique({
-      where: { id },
-    });
-
-    if (!existing) {
+    if (!deleted) {
       throw new NotFoundError(`Product with ID '${id}' not found`);
     }
-
-    await prisma.product.delete({
-      where: { id },
-    });
 
     res.status(204).send();
   } catch (error) {
